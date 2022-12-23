@@ -123,7 +123,7 @@ def loop():
         gps_lng = abs(gps.longitude)
         gps_elems["LBL_LAT"].text = f"{gps_lat:.6f}°{gps.latitude_card}"
         gps_elems["LBL_LNG"].text = f"{gps_lng:.6f}°{gps.longitude_card}"
-		
+
         gps_elems["LBL_SPEED"].text = "%d" % round(gps.speed_knots * 1.15)
 
         if gps.has_3d_fix and gps.altitude_m is not None:
