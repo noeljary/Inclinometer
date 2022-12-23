@@ -119,8 +119,10 @@ def loop():
             print("Waiting for fix...")
             return
 
-        gps_elems["LBL_LAT"].text = f"{gps.latitude:.6f}°{gps.latitude_card}"
-        gps_elems["LBL_LNG"].text = f"{gps.longitude:.6f}°{gps.longitude_card}"
+        gps_lat = abs(gps.latitude)
+        gps_lng = abs(gps.longitude)
+        gps_elems["LBL_LAT"].text = f"{gps_lat:.6f}°{gps.latitude_card}"
+        gps_elems["LBL_LNG"].text = f"{gps_lng:.6f}°{gps.longitude_card}"
 
         gps_elems["LBL_SPEED"].text = "%d" % round(gps.speed_knots * 1.15)
 
