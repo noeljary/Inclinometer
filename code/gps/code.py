@@ -32,9 +32,9 @@ def buildScrGPS():
 
     # Satellite Counter
     sat_bmp = displayio.OnDiskBitmap("/img/sat.bmp")
-    disp["SCR"].append(displayio.TileGrid(sat_bmp, pixel_shader=sat_bmp.pixel_shader, width=1, height=1, tile_width=16, tile_height=16, x=32, y=88))
-    gps_elems["LBL_SATS_IN_VIEW"] = Label(fonts[12], text = "0", color = 0xFFFFFF, anchor_point = (0.5, 0.5), anchored_position = (40, 118))
-    gps_elems["LBL_SATS"] = Label(fonts[12], text = "(0)", color = 0xFFFFFF, anchor_point = (0.5, 0.5), anchored_position = (40, 136))
+    disp["SCR"].append(displayio.TileGrid(sat_bmp, pixel_shader=sat_bmp.pixel_shader, width=1, height=1, tile_width=16, tile_height=16, x=32, y=90))
+    gps_elems["LBL_SATS_IN_VIEW"] = Label(fonts[12], text = "0", color = 0xFFFFFF, anchor_point = (0.5, 0.5), anchored_position = (40, 120))
+    gps_elems["LBL_SATS"] = Label(fonts[12], text = "(0)", color = 0xFFFFFF, anchor_point = (0.5, 0.5), anchored_position = (40, 140))
 
     # GPS Position
     gps_elems["LBL_LAT"] = Label(fonts[12], text = "00.000000°N", color = 0xFFFFFF, anchor_point = (1.0, 0.5), anchored_position = (175, 185))
@@ -50,9 +50,9 @@ def buildScrGPS():
 
     # Altitude
     alt_bmp = displayio.OnDiskBitmap("/img/alt.bmp")
-    disp["SCR"].append(displayio.TileGrid(alt_bmp, pixel_shader=alt_bmp.pixel_shader, width=1, height=1, tile_width=16, tile_height=16, x=192, y=92))
+    disp["SCR"].append(displayio.TileGrid(alt_bmp, pixel_shader=alt_bmp.pixel_shader, width=1, height=1, tile_width=16, tile_height=16, x=192, y=90))
     gps_elems["LBL_ALT"] = Label(fonts[12], text = "0", color = 0xFFFFFF, anchor_point = (0.5, 0.5), anchored_position = (200, 120))
-    gps_elems["LBL_ALT_UNIT"] = Label(fonts[12], text = "m", color = 0xFFFFFF, anchor_point = (0.5, 0.5), anchored_position = (200, 136))
+    gps_elems["LBL_ALT_UNIT"] = Label(fonts[12], text = "m", color = 0xFFFFFF, anchor_point = (0.5, 0.5), anchored_position = (200, 138))
 
     for elem in gps_elems:
         disp["SCR"].append(gps_elems[elem])
@@ -123,7 +123,7 @@ def loop():
         gps_lng = abs(gps.longitude)
         gps_elems["LBL_LAT"].text = f"{gps_lat:.6f}°{gps.latitude_card}"
         gps_elems["LBL_LNG"].text = f"{gps_lng:.6f}°{gps.longitude_card}"
-
+		
         gps_elems["LBL_SPEED"].text = "%d" % round(gps.speed_knots * 1.15)
 
         if gps.has_3d_fix and gps.altitude_m is not None:
