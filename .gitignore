@@ -1,6 +1,5 @@
 .DS_Store
-eagle.epf
-*.s#*
-*.b#*
 *.zip
 *.pdf
+*.step
+fp-info-cache
