@@ -6,6 +6,7 @@ class GPS:
         self.time = ""
         self.date = ""
         self.timestamp = 0
+        self._time_updated = 0
 
         self.latitude = 0
         self.latitude_cardinal = "N"
@@ -18,8 +19,7 @@ class GPS:
         self.speed = 0
         self.course = 0
 
-        self.fix = 0
-        self.status = None
+        self.fix = False
 
         self.hdop = 0
         self.vdop = 0
@@ -27,6 +27,7 @@ class GPS:
 
         self.satellites = {}
 
+    """ PARSING FUNCTIONS """
     def parse(self, nmea_str):
         # Validate NMEA Sentence Checksum
         if not self.validate_chksum(nmea_str):
@@ -47,13 +48,15 @@ class GPS:
             self.parse_gsv(nmea_data)
         elif nmea_sentence_type == "RMC":
             self.parse_rmc(nmea_data)
+        elif nmea_sentence_type == "VTG":
+            pass
         else:
             print(f"GPS Library Missing: {nmea_sentence_type}")
             return False
 
     def parse_gga(self, nmea_data):
         # Time
-        self.time = nmea_data[1][0:2] + ":" + nmea_data[1][2:4] + ":" + nmea_data[1][4:6] + "." + nmea_data[1][7:8]
+        self.set_time(nmea_data[1])
 
         # Latitude
         self.latitude = nmea_data[2]
@@ -64,7 +67,7 @@ class GPS:
         self.longitude_cardinal = nmea_data[5]
 
         # Fix
-        self.fix = True if int(nmea_data[6]) > 0 else False
+        self.fix = True if int(nmea_data[6]) == 1 else False
 
         # Horizonal Dilution of Precision
         self.hdop = nmea_data[8]
@@ -86,16 +89,9 @@ class GPS:
         self.longitude_cardinal = nmea_data[4]
 
         # Time
-        self.time = nmea_data[5][0:2] + ":" + nmea_data[5][2:4] + ":" + nmea_data[5][4:6] + "." + nmea_data[5][7:8]
-
-        # Status
-        self.status = nmea_data[6]
+        self.set_time(nmea_data[5])
 
     def parse_gsa(self, nmea_data):
-        #print(nmea_data)
-        # Fix Type
-        self.fix_type = nmea_data[2]
-
         # Dilution of Precision
         self.pdop = nmea_data[len(nmea_data) - 4]
         self.hdop = nmea_data[len(nmea_data) - 3]
@@ -129,12 +125,10 @@ class GPS:
 
     def parse_rmc(self, nmea_data):
         # Date/Time
-        self.time = nmea_data[1][0:2] + ":" + nmea_data[1][2:4] + ":" + nmea_data[1][4:6] + "." + nmea_data[1][7:8]
-        self.date = nmea_data[9][0:2] + "/" + nmea_data[9][2:4] + "/" + nmea_data[9][4:6]
-        self.timestamp = time.mktime(((2000 + int(nmea_data[9][4:6])), int(nmea_data[9][2:4]), int(nmea_data[9][0:2]), int(nmea_data[1][0:2]), int(nmea_data[1][2:4]), int(nmea_data[1][4:6]), 0, 0))
-
-        # Status
-        self.status = nmea_data[2]
+        self.set_time(nmea_data[1])
+        if not nmea_data[9] == "":
+            self.date = nmea_data[9][0:2] + "/" + nmea_data[9][2:4] + "/" + nmea_data[9][4:6]
+            self.timestamp = time.mktime(((2000 + int(nmea_data[9][4:6])), int(nmea_data[9][2:4]), int(nmea_data[9][0:2]), int(nmea_data[1][0:2]), int(nmea_data[1][2:4]), int(nmea_data[1][4:6]), 0, 0))
 
         # Latitude
         self.latitude = nmea_data[3]
@@ -163,6 +157,10 @@ class GPS:
             actual_chk ^= ord(char)
 
         return actual_chk == expected_chk
+
+    """ DATA FUNCTIONS """
+    def is_time_advancing(self):
+        return (time.ticks_ms() - self._time_updated) < 1200
 
     def get_altitude(self, unit):
         return self.altitude
@@ -214,12 +212,6 @@ class GPS:
     def has_fix(self):
         return self.fix
 
-    def parse_degrees(self, degrees):
-        f_degrees = float(degrees)
-        deg = f_degrees // 100
-        minutes = f_degrees % 100
-        return (deg + minutes / 60)
-
     def get_tracked_satellites(self):
         return len(self.satellites)
 
@@ -260,3 +252,22 @@ class GPS:
                 print(f"Satellite Network G{self.satellites[satellite]["network"]} Not Implemented")
 
         return networks
+
+    def parse_degrees(self, degrees):
+        f_degrees = float(degrees)
+        deg = f_degrees // 100
+        minutes = f_degrees % 100
+        return (deg + minutes / 60)
+
+    def set_time(self, gps_time):
+        if gps_time == "":
+            return
+
+        prev_time = self.time
+        new_time = gps_time[0:2] + ":" + gps_time[2:4] + ":" + gps_time[4:6] + "." + gps_time[7:8]
+
+        if not new_time == prev_time:
+            self._time_updated = time.ticks_ms()
+
+        self.time = new_time
+
