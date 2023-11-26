@@ -81,7 +81,7 @@ def save_tpms_ids_to_file():
 
     # Write New TPMS IDs to File
     f = open("conf/tpms.json", "w")
-    f.write(font.json.dumps(tpms_ids))
+    f.write(json.dumps(tpms_ids))
     f.close()
 
 def save_units_to_file():
@@ -99,7 +99,7 @@ def save_units_to_file():
 
     # Write New Units to File
     f = open("conf/units.json", "w")
-    f.write(font.json.dumps(units))
+    f.write(json.dumps(units))
     f.close()
 
 
