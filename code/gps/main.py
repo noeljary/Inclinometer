@@ -6,19 +6,18 @@ import gc9a01
 import cst816
 import math
 import framebuf
+import array
+import json
 
 # Images and Fonts
 import img.altitude, img.satellite
-import font.droid42_num, font.droid18_clk, font.droid15_gps
+import font.droid42_num, font.droid18_clk, font.droid17, font.droid15_gps
 
 
 """GPS FUNCTIONS"""
-# Parse GPS NMEA Sentences into GPS Object
 def gps_parser():
-    global gps # Access GPS Object in Parser Thread
-
     # Instantiate UART Connection to u-blox NEO-M9N
-    uart =  UART(0, baudrate=38400, rx=Pin(1), rxbuf=4096, timeout=200)
+    uart = UART(0, baudrate=38400, tx=Pin(0), rx=Pin(1), rxbuf=4096, timeout=200)
 
     # Clear rxBuf
     uart.read(uart.any())
@@ -38,11 +37,39 @@ def gps_parser():
 def mph2kmph(mph):
     return mph * 1.609344
 
-def mph2kn(mpg):
+def mph2kn(mph):
     return mph / 1.151
 
 def m2ft(m):
     return m * 3.281
+
+def load_units_from_file():
+    # Load JSON Units File into Python Dict
+    f = open("conf/units.json")
+    units = json.loads(f.read())
+    f.close()
+    
+    # Loop through Units and Assign Values
+    for unit in units:
+        gps_conf[unit + "_UNIT"] = units[unit]
+
+def save_units_to_file():
+    # Load JSON Units File into Python Dict
+    f = open("conf/units.json", "r")
+    units = json.loads(f.read())
+    f.close()
+
+    # Loop through Units and Check for Changes
+    rewrite = False
+    for unit in units:
+        if not gps_conf[unit + "_UNIT"] == units[unit]:
+            units[unit] = gps_conf[unit + "_UNIT"]
+            rewrite = True
+
+    # Write New Units to File
+    f = open("conf/units.json", "w")
+    f.write(json.dumps(units))
+    f.close()
 
 
 """ NO TIME FIX SPLASH VIEW """
@@ -124,7 +151,7 @@ def print_gps():
     # Hide if Fix Lost
     if not gps.fix:
         return "NOFIX"
-    
+
     # Print Date and Time
     fbuf.write(font.droid18_clk, gps.get_date(), 120, 40, 0xffff, 0x0000, True)
     fbuf.write(font.droid18_clk, gps.get_time(), 120, 62, 0xffff, 0x0000, True)
@@ -158,6 +185,11 @@ def print_gps():
 
     tft.blit_buffer(fbuf, 0, 0, 240, 240)
 
+def touch_gps(gesture, coords):   
+    if gesture in (cst816.CST816_Gesture_Left, cst816.CST816_Gesture_Right):
+        return slide(gesture, coords)
+    elif gesture in (cst816.CST816_Gesture_Up, cst816.CST816_Gesture_Down):
+        return "UNITS"
 
 """SKY MAP VIEW"""
 def print_sky():
@@ -181,6 +213,67 @@ def print_sky():
             fbuf.ellipse(x, y, 5, 5, colour, active)
 
     tft.blit_buffer(fbuf, 0, 0, 240, 240)
+
+
+""" UNITS VIEW """
+def init_units():
+    # Blank Canvas
+    fbuf.fill(0)
+
+    # Header
+    fbuf.rect(0, 0, 240, 50, 0x3B32, True)
+    fbuf.write(font.droid17, "UNITS", 120, 28, 0xffff, 0x3B32, True)
+
+    # OK Button
+    fbuf.rect(0, 190, 240, 50, 0x896D, True)
+    fbuf.write(font.droid17, "OK", 120, 214, 0xffff, 0x896D, True)
+
+    # Pressure Lozenge
+    fbuf.ellipse(45, 88, 26, 26, 0xffff, True)
+    fbuf.ellipse(195, 88, 26, 26, 0xffff, True)
+    fbuf.rect(45, 62, 150, 53, 0xffff, True)
+    fbuf.poly(36, 88, array.array('h', [8, -8, 8, 8, 0, 0]), 0x1084, True)
+    fbuf.poly(196, 80, array.array('h', [8, 8, 0, 16, 0, 0]), 0x1084, True)
+
+    # Temperature Lozenge
+    fbuf.ellipse(45, 152, 26, 26, 0xffff, True)
+    fbuf.ellipse(195, 152, 26, 26, 0xffff, True)
+    fbuf.rect(45, 126, 150, 53, 0xffff, True)
+    fbuf.poly(36, 152, array.array('h', [8, -8, 8, 8, 0, 0]), 0x1084, True)
+    fbuf.poly(196, 144, array.array('h', [8, 8, 0, 16, 0, 0]), 0x1084, True)
+
+def print_units():
+    # Print Speed Unit
+    speed_unit = gps_conf["SPEED_UNITS"][gps_conf["SPEED_UNIT"]][0]
+    fbuf.rect(60, 62, 120, 53, 0xffff, True)
+    fbuf.write(font.droid17, speed_unit, 120, 89, 0x0000, 0xffff, True)
+
+    # Print Altitude Unit
+    altitude_unit = gps_conf["ALT_UNITS"][gps_conf["ALT_UNIT"]][0]
+    fbuf.rect(60, 126, 120, 53, 0xffff, True)
+    fbuf.write(font.droid17, altitude_unit, 120, 153, 0x0000, 0xffff, True)
+
+    tft.blit_buffer(fbuf, 0, 0, 240, 240)
+
+def touch_units(gesture, coords):
+        # Only Taps
+    if gesture < 5:
+        return
+
+    # Lower Button - Return to Default View
+    if coords[1] > 190:
+        save_units_to_file()
+        return "LOCATION"
+
+    # Cycle Through Pressure & Temperature Units
+    if coords[0] < 100 and coords[1] > 52 and coords[1] < 118: # Left on Pressure
+        gps_conf["SPEED_UNIT"] += -1 if gps_conf["SPEED_UNIT"] > 0 else len(gps_conf["SPEED_UNITS"]) - 1
+    elif coords[0] > 140 and coords[1] > 52 and coords[1] < 118: # Right on Pressure
+        gps_conf["SPEED_UNIT"] += 1 if gps_conf["SPEED_UNIT"] < len(gps_conf["SPEED_UNITS"]) - 1 else -(len(gps_conf["SPEED_UNITS"])) + 1
+    elif coords[0] < 100 and coords[1] > 122 and coords[1] < 188: # Left on Temperature
+        gps_conf["ALT_UNIT"] += -1 if gps_conf["ALT_UNIT"] > 0 else len(gps_conf["ALT_UNITS"]) - 1
+    elif coords[0] > 140 and coords[1] > 122 and coords[1] < 188: # Right on Temperature
+        gps_conf["ALT_UNIT"] += 1 if gps_conf["ALT_UNIT"] < len(gps_conf["ALT_UNITS"]) - 1 else -(len(gps_conf["ALT_UNITS"])) + 1
 
 
 """ LOADING SPINNER """
@@ -213,13 +306,13 @@ def slide(gesture, coords):
             if gps_conf["SLIDE_ORDER"][screen] == active_scr:
                 position = screen
                 break
-        
+
         # Fail if Screen Not Found
         if position is None:
             return
     else:
         return
-
+    
     if gesture == cst816.CST816_Gesture_Left:
         position = (position + 1) % len(gps_conf["SLIDE_ORDER"])
     elif gesture == cst816.CST816_Gesture_Right:
@@ -233,21 +326,20 @@ active_scr = "NOTIME"
 screens = {
     "NOTIME"   : (init_splash, print_splash, None , 50),
     "NOFIX"    : (init_splash2, print_splash2, None, 50),
-    "LOCATION" : (init_gps, print_gps, slide, 200),
-    "SKYMAP"   : (None, print_sky, slide, 1000)
+    "LOCATION" : (init_gps, print_gps, touch_gps, 200),
+    "SKYMAP"   : (None, print_sky, slide, 1000),
+    "UNITS"    : (init_units, print_units, touch_units, 200)
 }
 
 # GPS Config
 gps_conf = {
      "SPIN_ROTATION" : -2,
-     "TIMEZONE" : 0,
-     "SLIDE_ORDER" : ("LOCATION", "SKYMAP"),
-     "SAT_COLOURS" : {"A" : 0x9F04, "B" : 0x38FC, "L" : 0x8427, "P" : 0x28FE},
-     "STAT_COLOURS" : [0x61F8, 0x61F8, 0x62FC, 0x896D],
-     "SPEED_UNITS" : [("Miles", "mph", None), ("Kilometres", "kmph", mph2kmph), ("Knots", "kn", mph2kn)],
-     "ALT_UNITS" : [("Metres", "m", None), ("Feet", "ft", m2ft)],
-     "SPEED_UNIT" : 0,
-     "ALT_UNIT" : 0
+     "TIMEZONE"      : 0,
+     "SLIDE_ORDER"   : ("LOCATION", "SKYMAP"),
+     "SAT_COLOURS"   : {"A" : 0x9F04, "B" : 0x38FC, "L" : 0x8427, "P" : 0x28FE},
+     "STAT_COLOURS"  : [0x61F8, 0x61F8, 0x62FC, 0x896D],
+     "SPEED_UNITS"   : [("Miles", "mph", None), ("Kilometres", "kmph", mph2kmph), ("Knots", "kn", mph2kn)],
+     "ALT_UNITS"     : [("Metres", "m", None), ("Feet", "ft", m2ft)]
 }
 
 # Instantiate GPS Parser Object
@@ -255,6 +347,9 @@ gps = GPS()
 
 # Instantiate GPS Parser Thread
 second_thread = _thread.start_new_thread(gps_parser, ())
+
+# Load Data from File
+load_units_from_file()
 
 # Create Global FrameBuffer
 fbuf = framebuf.FrameBuffer(bytearray(115200), 240, 240, framebuf.RGB565)
