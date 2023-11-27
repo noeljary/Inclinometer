@@ -48,7 +48,7 @@ def load_units_from_file():
     f = open("conf/units.json")
     units = json.loads(f.read())
     f.close()
-    
+
     # Loop through Units and Assign Values
     for unit in units:
         gps_conf[unit + "_UNIT"] = units[unit]
@@ -188,8 +188,11 @@ def print_gps():
 def touch_gps(gesture, coords):   
     if gesture in (cst816.CST816_Gesture_Left, cst816.CST816_Gesture_Right):
         return slide(gesture, coords)
-    elif gesture in (cst816.CST816_Gesture_Up, cst816.CST816_Gesture_Down):
+    elif gesture == cst816.CST816_Gesture_Down:
         return "UNITS"
+    elif gesture == cst816.CST816_Gesture_Up:
+        return "TZDATA"
+
 
 """SKY MAP VIEW"""
 def print_sky():
@@ -256,7 +259,7 @@ def print_units():
     tft.blit_buffer(fbuf, 0, 0, 240, 240)
 
 def touch_units(gesture, coords):
-        # Only Taps
+    # Only Taps
     if gesture < 5:
         return
 
@@ -275,6 +278,41 @@ def touch_units(gesture, coords):
     elif coords[0] > 140 and coords[1] > 122 and coords[1] < 188: # Right on Temperature
         gps_conf["ALT_UNIT"] += 1 if gps_conf["ALT_UNIT"] < len(gps_conf["ALT_UNITS"]) - 1 else -(len(gps_conf["ALT_UNITS"])) + 1
 
+
+""" TIME ZONE VIEW """
+def init_tzdata():
+    # Blank Canvas
+    fbuf.fill(0)
+
+    # Header
+    fbuf.rect(0, 0, 240, 50, 0x3B32, True)
+    fbuf.write(font.droid17, "TIMEZONE", 120, 28, 0xffff, 0x3B32, True)
+
+    # OK Button
+    fbuf.rect(0, 190, 240, 50, 0x896D, True)
+    fbuf.write(font.droid17, "OK", 120, 214, 0xffff, 0x896D, True)
+
+    # Time Zone Lozenge
+    fbuf.ellipse(45, 88, 26, 26, 0xffff, True)
+    fbuf.ellipse(195, 88, 26, 26, 0xffff, True)
+    fbuf.rect(45, 62, 150, 53, 0xffff, True)
+    fbuf.poly(36, 88, array.array('h', [8, -8, 8, 8, 0, 0]), 0x1084, True)
+    fbuf.poly(196, 80, array.array('h', [8, 8, 0, 16, 0, 0]), 0x1084, True)
+
+    # Daylight Savings
+
+def print_tzdata():
+    tft.blit_buffer(fbuf, 0, 0, 240, 240)
+
+def touch_tzdata(gesture, coords):
+    # Only Taps
+    if gesture < 5:
+        return
+
+    # Lower Button - Return to Default View
+    if coords[1] > 190:
+        #save_tzdata_to_file()
+        return "LOCATION"
 
 """ LOADING SPINNER """
 def spinner(fb):
@@ -312,7 +350,7 @@ def slide(gesture, coords):
             return
     else:
         return
-    
+
     if gesture == cst816.CST816_Gesture_Left:
         position = (position + 1) % len(gps_conf["SLIDE_ORDER"])
     elif gesture == cst816.CST816_Gesture_Right:
@@ -328,7 +366,8 @@ screens = {
     "NOFIX"    : (init_splash2, print_splash2, None, 50),
     "LOCATION" : (init_gps, print_gps, touch_gps, 200),
     "SKYMAP"   : (None, print_sky, slide, 1000),
-    "UNITS"    : (init_units, print_units, touch_units, 200)
+    "UNITS"    : (init_units, print_units, touch_units, 200),
+    "TZDATA"   : (init_tzdata, print_tzdata, touch_tzdata, 200)
 }
 
 # GPS Config
